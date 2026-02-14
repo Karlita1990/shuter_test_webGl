@@ -240,6 +240,32 @@
             pointer-events: none;
         }
         
+        /* Індикатор тригера */
+        #trigger-indicator {
+            position: absolute;
+            bottom: 280px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,255,0,0.8);
+            color: black;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 2px solid white;
+            z-index: 30;
+            display: none;
+            backdrop-filter: blur(5px);
+            white-space: nowrap;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+        
         .modal {
             position: absolute;
             top: 50%;
@@ -296,10 +322,6 @@
             color: #ff0000;
         }
         
-        #controls-hint {
-            display: none;
-        }
-        
         #damage-overlay {
             position: absolute;
             top: 0;
@@ -332,6 +354,9 @@
     
     <div id="level-name">МІСЬКА ЗАБУДОВА</div>
     <div id="crosshair"></div>
+    
+    <!-- Індикатор тригера -->
+    <div id="trigger-indicator">👆 Натисніть ЗЕЛЕНУ кнопку</div>
     
     <!-- Спрощене сенсорне управління -->
     <div id="touch-zone-left">
@@ -373,15 +398,15 @@
 
     <script type="module">
         import * as THREE from 'three';
-        import { PointerLockControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/PointerLockControls.js';
 
-        // --- Налаштування сцени (як у першій версії) ---
+        // --- Налаштування сцени ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
         scene.fog = new THREE.Fog(0x87CEEB, 30, 100);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 15); // Трохи нижче для кращого огляду
+        camera.position.set(0, 5, 15);
+        camera.rotation.order = 'YXZ'; // Важливо для правильної орієнтації
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -397,11 +422,6 @@
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 1024;
         sunLight.shadow.mapSize.height = 1024;
-        const d = 50;
-        sunLight.shadow.camera.left = -d;
-        sunLight.shadow.camera.right = d;
-        sunLight.shadow.camera.top = d;
-        sunLight.shadow.camera.bottom = -d;
         scene.add(sunLight);
 
         // --- Змінні стану гравця ---
@@ -410,7 +430,8 @@
             score: 0,
             ammo: 30,
             level: 1,
-            maxLevel: 3
+            maxLevel: 3,
+            nearTrigger: null // Тригер, біля якого знаходиться гравець
         };
 
         // Масиви об'єктів
@@ -436,6 +457,7 @@
         const leftKnob = document.getElementById('left-knob');
         const rightKnob = document.getElementById('right-knob');
         const damageOverlay = document.getElementById('damage-overlay');
+        const triggerIndicator = document.getElementById('trigger-indicator');
 
         // --- Сенсорне управління ---
         function handleTouchStart(e) {
@@ -480,7 +502,6 @@
                     const deltaX = (leftCurrentPos.x - leftStartPos.x) / 70;
                     const deltaY = (leftCurrentPos.y - leftStartPos.y) / 70;
                     
-                    // Обмежуємо значення
                     moveDirection.x = Math.max(-1, Math.min(1, deltaX));
                     moveDirection.z = Math.max(-1, Math.min(1, -deltaY));
                     
@@ -493,7 +514,7 @@
                 if (rightTouchId === touch.identifier) {
                     const newRightPos = { x: touch.clientX, y: touch.clientY };
                     
-                    // Поворот камери (повільніше для зручності)
+                    // Поворот камери
                     const deltaX = (newRightPos.x - rightCurrentPos.x) * 0.008;
                     const deltaY = (newRightPos.y - rightCurrentPos.y) * 0.008;
                     
@@ -525,13 +546,12 @@
             rightKnob.style.transform = 'translate(0px, 0px)';
         }
         
-        // Стрільба
+        // --- Стрільба ---
         function handleFireTap(e) {
             e.preventDefault();
             
             if (player.ammo <= 0) {
-                // Автоматична перезарядка
-                player.ammo = 30;
+                player.ammo = 30; // Автоперезарядка
                 updateUI();
                 return;
             }
@@ -558,14 +578,30 @@
                 distance: 0
             });
             
-            // Легка вібрація
             if (navigator.vibrate) navigator.vibrate(30);
         }
         
-        // Взаємодія
+        // --- Взаємодія (ВИПРАВЛЕНО) ---
         function handleInteractTap(e) {
             e.preventDefault();
-            checkInteraction();
+            console.log('Interact button tapped'); // Для налагодження
+            
+            // Перевіряємо, чи є поруч тригер
+            if (player.nearTrigger) {
+                console.log('Trigger found, opening modal');
+                openTaskModal(player.nearTrigger);
+            } else {
+                console.log('No trigger nearby');
+                // Тимчасове повідомлення
+                triggerIndicator.textContent = '❌ Немає тригера поруч';
+                triggerIndicator.style.display = 'block';
+                triggerIndicator.style.background = 'rgba(255,0,0,0.8)';
+                setTimeout(() => {
+                    triggerIndicator.style.display = 'none';
+                    triggerIndicator.style.background = 'rgba(0,255,0,0.8)';
+                    triggerIndicator.textContent = '👆 Натисніть ЗЕЛЕНУ кнопку';
+                }, 1000);
+            }
         }
         
         // Додаємо обробники подій
@@ -593,26 +629,24 @@
             document.getElementById('level-name').textContent = levelName;
         }
 
-        // --- Пошкодження гравця (м'якше) ---
+        // --- Пошкодження ---
         function damagePlayer(amount) {
             player.health = Math.max(0, player.health - amount);
             updateUI();
             
-            // Червоний спалах
             damageOverlay.style.background = 'rgba(255,0,0,0.2)';
             setTimeout(() => {
                 damageOverlay.style.background = 'rgba(255,0,0,0)';
             }, 150);
             
             if (player.health <= 0) {
-                // М'яке відновлення
                 player.health = 100;
                 player.score = Math.max(0, player.score - 20);
                 updateUI();
             }
         }
 
-        // --- Створення рівнів (як у першій версії) ---
+        // --- Створення рівнів ---
         function clearLevel() {
             const toRemove = [];
             scene.traverse(obj => {
@@ -628,6 +662,8 @@
             
             enemies.length = 0;
             bullets.length = 0;
+            player.nearTrigger = null;
+            triggerIndicator.style.display = 'none';
         }
 
         function createGround(color) {
@@ -640,7 +676,7 @@
             scene.add(ground);
         }
 
-        // Рівень 1: Місто (прості вороги)
+        // Рівень 1: Місто
         function createCityLevel() {
             createGround(0x555555);
             
@@ -655,7 +691,7 @@
                 scene.add(building);
             }
             
-            // Прості вороги (не стріляють)
+            // Вороги
             for (let i = 0; i < 4; i++) {
                 const enemyGeo = new THREE.BoxGeometry(1, 2, 1);
                 const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
@@ -673,6 +709,9 @@
                     health: 2
                 });
             }
+            
+            // Додаємо тригери (великі та помітні)
+            addTriggers();
         }
 
         // Рівень 2: Джунглі
@@ -713,6 +752,8 @@
                     health: 1
                 });
             }
+            
+            addTriggers();
         }
 
         // Рівень 3: Гори
@@ -747,21 +788,62 @@
                     health: 2
                 });
             }
+            
+            addTriggers();
         }
 
-        // --- Модальне вікно ---
+        // --- Тригери (ВИПРАВЛЕНО) ---
+        function addTriggers() {
+            // Робимо тригери більш помітними
+            const triggerMat = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00, 
+                transparent: true, 
+                opacity: 0.4,
+                emissive: 0x004400
+            });
+            
+            // Додаємо 3 тригери на рівні
+            const positions = [
+                { x: 15, z: 10, id: 0, question: '2 + 2 = ?' },
+                { x: -10, z: -15, id: 1, question: '3 + 3 = ?' },
+                { x: 5, z: -20, id: 2, question: '4 + 4 = ?' }
+            ];
+            
+            positions.forEach(pos => {
+                const triggerGeo = new THREE.BoxGeometry(4, 4, 4);
+                const trigger = new THREE.Mesh(triggerGeo, triggerMat);
+                trigger.position.set(pos.x, 2, pos.z);
+                trigger.castShadow = true;
+                trigger.receiveShadow = true;
+                scene.add(trigger);
+                
+                // Додаємо обвідку для кращої видимості
+                const edges = new THREE.EdgesGeometry(triggerGeo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+                trigger.add(line);
+                
+                trigger.userData = { 
+                    type: 'task', 
+                    taskId: pos.id,
+                    question: pos.question
+                };
+            });
+        }
+
+        // --- Модальне вікно (ВИПРАВЛЕНО) ---
         let currentTaskId = 0;
         let activeTrigger = null;
 
         window.closeModal = function() {
             document.getElementById('task-modal').style.display = 'none';
+            activeTrigger = null;
         };
 
         window.checkAnswer = function() {
             const answer = document.getElementById('modal-answer').value.trim();
             const resultEl = document.getElementById('modal-result');
             
-            const correctAnswers = ['4', '5', '6', '8', '12', '7', '10'];
+            const correctAnswers = ['4', '6', '8'];
             const isCorrect = (answer === correctAnswers[currentTaskId]);
             
             if (isCorrect) {
@@ -773,6 +855,8 @@
                 if (activeTrigger) {
                     scene.remove(activeTrigger);
                     activeTrigger = null;
+                    player.nearTrigger = null;
+                    triggerIndicator.style.display = 'none';
                 }
                 
                 setTimeout(closeModal, 1000);
@@ -782,48 +866,55 @@
             }
         };
 
-        function checkInteraction() {
-            const triggers = [];
+        function openTaskModal(trigger) {
+            activeTrigger = trigger;
+            currentTaskId = trigger.userData.taskId;
+            
+            const modal = document.getElementById('task-modal');
+            const questionEl = document.getElementById('modal-question');
+            
+            // Встановлюємо питання відповідно до тригера
+            const questions = ['2 + 2 = ?', '3 + 3 = ?', '4 + 4 = ?'];
+            questionEl.textContent = questions[currentTaskId];
+            
+            document.getElementById('modal-answer').value = '';
+            document.getElementById('modal-result').textContent = '';
+            
+            modal.style.display = 'block';
+        }
+
+        // --- Перевірка наближення до тригерів ---
+        function checkTriggers() {
+            let foundTrigger = null;
+            let minDistance = 8; // Радіус активації
+            
             scene.traverse(obj => {
                 if (obj.userData && obj.userData.type === 'task') {
-                    if (obj.position.distanceTo(camera.position) < 5) {
-                        triggers.push(obj);
+                    const distance = obj.position.distanceTo(camera.position);
+                    if (distance < minDistance) {
+                        foundTrigger = obj;
+                        minDistance = distance;
                     }
                 }
             });
             
-            if (triggers.length > 0) {
-                activeTrigger = triggers[0];
-                currentTaskId = activeTrigger.userData.taskId;
-                
-                document.getElementById('task-modal').style.display = 'block';
-                document.getElementById('modal-answer').value = '';
-                document.getElementById('modal-result').textContent = '';
+            if (foundTrigger) {
+                player.nearTrigger = foundTrigger;
+                triggerIndicator.style.display = 'block';
+            } else {
+                player.nearTrigger = null;
+                triggerIndicator.style.display = 'none';
             }
         }
 
-        // --- Додавання тригерів ---
-        function addTriggers() {
-            const triggerMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.2 });
-            
-            for (let i = 0; i < 3; i++) {
-                const triggerGeo = new THREE.BoxGeometry(3, 3, 3);
-                const trigger = new THREE.Mesh(triggerGeo, triggerMat);
-                trigger.position.set(10 + i*12, 1.5, 10 + i*5);
-                scene.add(trigger);
-                trigger.userData = { type: 'task', taskId: i };
-            }
-        }
-
-        // --- Ініціалізація першого рівня ---
+        // --- Ініціалізація ---
         createCityLevel();
-        addTriggers();
 
-        // --- Анімація (спрощена) ---
+        // --- Анімація ---
         function animate() {
             requestAnimationFrame(animate);
 
-            // Рух гравця від джойстика
+            // Рух гравця
             if (moveDirection.length() > 0.1) {
                 const speed = 0.12;
                 const move = new THREE.Vector3(moveDirection.x, 0, moveDirection.z);
@@ -834,13 +925,16 @@
                 camera.position.add(move.multiplyScalar(speed));
             }
 
+            // Перевірка тригерів (кожен кадр)
+            checkTriggers();
+
             // Оновлення куль
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
                 bullet.mesh.position.add(bullet.direction.clone().multiplyScalar(bullet.speed));
                 bullet.distance += bullet.speed;
                 
-                // Перевірка попадання у ворогів
+                // Перевірка попадання
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     const enemy = enemies[j];
                     if (bullet.mesh.position.distanceTo(enemy.mesh.position) < 1.5) {
@@ -868,11 +962,10 @@
             enemies.forEach(enemy => {
                 enemy.mesh.position.add(enemy.direction.clone().multiplyScalar(enemy.speed));
                 
-                // Відбивання від меж
                 if (Math.abs(enemy.mesh.position.x) > 45) enemy.direction.x *= -1;
                 if (Math.abs(enemy.mesh.position.z) > 45) enemy.direction.z *= -1;
                 
-                // Випадкове пошкодження при зіткненні (дуже рідко)
+                // Випадкове зіткнення
                 if (Math.random() < 0.001 && enemy.mesh.position.distanceTo(camera.position) < 2) {
                     damagePlayer(5);
                 }
@@ -890,10 +983,9 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Початкове оновлення UI
         updateUI();
 
-        // Додаємо декоративні зірки
+        // Додаємо зірки
         const starsGeo = new THREE.BufferGeometry();
         const starsPos = new Float32Array(200 * 3);
         for (let i = 0; i < 200 * 3; i += 3) {
@@ -906,7 +998,7 @@
         const stars = new THREE.Points(starsGeo, starsMat);
         scene.add(stars);
 
-        console.log('Мобільна версія (проста) запущена!');
+        console.log('Мобільна версія запущена! Зелена кнопка працює');
     </script>
 </body>
 </html>
