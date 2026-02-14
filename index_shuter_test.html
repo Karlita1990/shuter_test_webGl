@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>3D Шутер: Мобільна версія (горизонтальна)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            touch-action: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Горизонтальна орієнтація */
+        @media (orientation: portrait) {
+            #rotate-warning {
+                display: flex !important;
+            }
+        }
+        
+        #rotate-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            color: white;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 24px;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #rotate-warning svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            fill: white;
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 15px;
+            border: 2px solid #00ff00;
+            z-index: 10;
+            display: flex;
+            justify-content: space-around;
+            backdrop-filter: blur(5px);
+            font-size: 14px;
+            box-shadow: 0 0 20px rgba(0,255,0,0.3);
+        }
+        
+        #info-panel div {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        #info-panel .value {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(255,255,255,0.8);
+            border-radius: 50%;
+            z-index: 5;
+            pointer-events: none;
+            box-shadow: 0 0 10px #00ffff;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+        }
+        
+        #crosshair::before {
+            width: 16px;
+            height: 2px;
+            top: 14px;
+            left: 7px;
+        }
+        
+        #crosshair::after {
+            width: 2px;
+            height: 16px;
+            top: 7px;
+            left: 14px;
+        }
+        
+        #level-name {
+            position: absolute;
+            top: 70px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: #ffaa00;
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 1px solid #ffaa00;
+            z-index: 10;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        /* Сенсорне управління */
+        #touch-zone-left {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 140px;
+            height: 140px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 70px;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            text-transform: uppercase;
+            touch-action: none;
+        }
+        
+        #touch-zone-right {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 140px;
+            height: 140px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 70px;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            text-transform: uppercase;
+            touch-action: none;
+        }
+        
+        #fire-button {
+            position: absolute;
+            bottom: 180px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            background: rgba(255,0,0,0.4);
+            border: 3px solid #ff0000;
+            border-radius: 35px;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            touch-action: none;
+        }
+        
+        #interact-button {
+            position: absolute;
+            bottom: 180px;
+            left: 30px;
+            width: 70px;
+            height: 70px;
+            background: rgba(0,255,0,0.3);
+            border: 3px solid #00ff00;
+            border-radius: 35px;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0,255,0,0.3);
+            touch-action: none;
+        }
+        
+        #joystick-left {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 140px;
+            height: 140px;
+            z-index: 21;
+            pointer-events: none;
+        }
+        
+        #joystick-left .knob {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 25px;
+            top: 45px;
+            left: 45px;
+            border: 2px solid white;
+            transition: transform 0.1s;
+            pointer-events: none;
+        }
+        
+        .modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            color: white;
+            padding: 25px;
+            border-radius: 20px;
+            border: 3px solid #00ffff;
+            z-index: 100;
+            display: none;
+            text-align: center;
+            min-width: 280px;
+            max-width: 90%;
+            box-shadow: 0 0 50px rgba(0,255,255,0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal h2 {
+            color: #00ffff;
+            margin-top: 0;
+            font-size: 22px;
+        }
+        
+        .modal input {
+            padding: 12px;
+            font-size: 18px;
+            width: 90%;
+            margin: 15px 0;
+            border-radius: 10px;
+            border: none;
+            background: #333;
+            color: white;
+            -webkit-appearance: none;
+        }
+        
+        .modal button {
+            padding: 12px 30px;
+            font-size: 20px;
+            background: #00ffff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: black;
+            font-weight: bold;
+            min-width: 150px;
+        }
+        
+        .modal .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 35px;
+            cursor: pointer;
+            color: #ff0000;
+        }
+        
+        #damage-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,0,0,0);
+            pointer-events: none;
+            z-index: 15;
+            transition: background 0.2s;
+        }
+        
+        #reload-indicator {
+            position: absolute;
+            bottom: 260px;
+            right: 30px;
+            color: white;
+            font-size: 16px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid yellow;
+            display: none;
+            z-index: 20;
+        }
+        
+        #controls-hint {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="rotate-warning">
+        <svg viewBox="0 0 100 100">
+            <rect x="20" y="30" width="60" height="40" rx="5" fill="none" stroke="white" stroke-width="3"/>
+            <circle cx="50" cy="50" r="5" fill="white"/>
+            <path d="M35 20 L50 5 L65 20" stroke="white" stroke-width="3" fill="none"/>
+        </svg>
+        <p>Поверніть пристрій<br>у горизонтальне положення</p>
+    </div>
+
+    <div id="info-panel">
+        <div>❤️ <span id="health" class="value">100</span></div>
+        <div>⭐ <span id="score" class="value">0</span></div>
+        <div>🔫 <span id="ammo" class="value">30</span></div>
+        <div>🗺️ <span id="level-display" class="value">1/3</span></div>
+    </div>
+    
+    <div id="level-name">МІСЬКА ЗАБУДОВА</div>
+    <div id="crosshair"></div>
+    
+    <!-- Сенсорне управління -->
+    <div id="touch-zone-left"></div>
+    <div id="touch-zone-right"></div>
+    <div id="fire-button">🔥</div>
+    <div id="interact-button">👆</div>
+    <div id="reload-indicator">Перезарядка...</div>
+    
+    <div id="joystick-left">
+        <div class="knob" id="joystick-knob"></div>
+    </div>
+    
+    <div id="damage-overlay"></div>
+
+    <!-- Модальне вікно -->
+    <div id="task-modal" class="modal">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">Тестове завдання</h2>
+        <p id="modal-question">2 + 2 = ?</p>
+        <input type="number" id="modal-answer" placeholder="Ваша відповідь" inputmode="numeric">
+        <br>
+        <button onclick="checkAnswer()">Відповісти</button>
+        <p id="modal-result" style="margin-top: 10px; color: #ffaa00;"></p>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/PointerLockControls.js';
+
+        // --- Налаштування сцени ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 30, 100);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- Освітлення ---
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        sunLight.position.set(50, 50, 50);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        const d = 60;
+        sunLight.shadow.camera.left = -d;
+        sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d;
+        sunLight.shadow.camera.bottom = -d;
+        sunLight.shadow.camera.near = 1;
+        sunLight.shadow.camera.far = 100;
+        scene.add(sunLight);
+
+        const fillLight = new THREE.PointLight(0x446688, 0.5);
+        fillLight.position.set(0, 20, 20);
+        scene.add(fillLight);
+
+        // --- Управління (адаптоване для мобільних) ---
+        const controls = new PointerLockControls(camera, document.body);
+        
+        // --- Змінні стану гравця ---
+        let player = {
+            health: 100,
+            maxHealth: 100,
+            score: 0,
+            ammo: 30,
+            maxAmmo: 30,
+            level: 1,
+            maxLevel: 3,
+            isReloading: false
+        };
+
+        // Масиви об'єктів
+        const bullets = [];
+        const enemies = [];
+        const enemyBullets = [];
+        
+        // Стан руху (для джойстика)
+        const moveDirection = new THREE.Vector3(0, 0, 0);
+        const lookDirection = new THREE.Vector3(0, 0, 0);
+        
+        // Сенсорне управління
+        let leftTouchId = null;
+        let rightTouchId = null;
+        let leftStartPos = { x: 0, y: 0 };
+        let rightStartPos = { x: 0, y: 0 };
+        let leftCurrentPos = { x: 0, y: 0 };
+        let rightCurrentPos = { x: 0, y: 0 };
+        
+        const leftZone = document.getElementById('touch-zone-left');
+        const rightZone = document.getElementById('touch-zone-right');
+        const fireButton = document.getElementById('fire-button');
+        const interactButton = document.getElementById('interact-button');
+        const joystickKnob = document.getElementById('joystick-knob');
+        const damageOverlay = document.getElementById('damage-overlay');
+        const reloadIndicator = document.getElementById('reload-indicator');
+
+        // --- Обробка сенсорного введення ---
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touches = e.touches;
+            
+            for (let i = 0; i < touches.length; i++) {
+                const touch = touches[i];
+                const touchX = touch.clientX;
+                const touchY = touch.clientY;
+                
+                // Ліва зона (рух)
+                if (touchX < window.innerWidth / 2) {
+                    if (leftTouchId === null) {
+                        leftTouchId = touch.identifier;
+                        leftStartPos = { x: touchX, y: touchY };
+                        leftCurrentPos = { x: touchX, y: touchY };
+                    }
+                } 
+                // Права зона (огляд)
+                else {
+                    if (rightTouchId === null) {
+                        rightTouchId = touch.identifier;
+                        rightStartPos = { x: touchX, y: touchY };
+                        rightCurrentPos = { x: touchX, y: touchY };
+                    }
+                }
+            }
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touches = e.touches;
+            
+            for (let i = 0; i < touches.length; i++) {
+                const touch = touches[i];
+                
+                if (leftTouchId === touch.identifier) {
+                    leftCurrentPos = { x: touch.clientX, y: touch.clientY };
+                    
+                    // Оновлюємо напрямок руху
+                    const deltaX = (leftCurrentPos.x - leftStartPos.x) / 70;
+                    const deltaY = (leftCurrentPos.y - leftStartPos.y) / 70;
+                    
+                    moveDirection.x = Math.max(-1, Math.min(1, deltaX));
+                    moveDirection.z = Math.max(-1, Math.min(1, -deltaY));
+                    
+                    // Оновлюємо візуалізацію джойстика
+                    const knobX = 45 + deltaX * 40;
+                    const knobY = 45 + deltaY * 40;
+                    joystickKnob.style.transform = `translate(${knobX - 45}px, ${knobY - 45}px)`;
+                }
+                
+                if (rightTouchId === touch.identifier) {
+                    const newRightPos = { x: touch.clientX, y: touch.clientY };
+                    
+                    // Поворот камери
+                    const deltaX = (newRightPos.x - rightCurrentPos.x) * 0.01;
+                    const deltaY = (newRightPos.y - rightCurrentPos.y) * 0.01;
+                    
+                    camera.rotation.y -= deltaX;
+                    camera.rotation.x -= deltaY;
+                    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                    
+                    rightCurrentPos = newRightPos;
+                }
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const touches = e.touches;
+            
+            leftTouchId = null;
+            rightTouchId = null;
+            moveDirection.set(0, 0, 0);
+            joystickKnob.style.transform = 'translate(0px, 0px)';
+        }
+        
+        // Стрільба по тапу
+        function handleFireTap(e) {
+            e.preventDefault();
+            if (player.isReloading || player.ammo <= 0) {
+                if (player.ammo <= 0 && !player.isReloading) {
+                    startReload();
+                }
+                return;
+            }
+            
+            player.ammo--;
+            updateUI();
+            
+            // Створюємо кулю
+            const bulletGeo = new THREE.SphereGeometry(0.3);
+            const bulletMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 });
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            
+            bullet.position.copy(camera.position);
+            bullet.castShadow = true;
+            scene.add(bullet);
+            
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.applyQuaternion(camera.quaternion);
+            
+            bullets.push({
+                mesh: bullet,
+                direction: direction,
+                speed: 0.8,
+                distance: 0,
+                isEnemy: false
+            });
+            
+            // Вібрація (якщо підтримується)
+            if (navigator.vibrate) navigator.vibrate(50);
+        }
+        
+        // Взаємодія
+        function handleInteractTap(e) {
+            e.preventDefault();
+            checkInteraction();
+        }
+        
+        // Додаємо обробники подій
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+        
+        fireButton.addEventListener('touchstart', handleFireTap, { passive: false });
+        interactButton.addEventListener('touchstart', handleInteractTap, { passive: false });
+
+        // --- Перезарядка ---
+        function startReload() {
+            if (player.isReloading) return;
+            player.isReloading = true;
+            reloadIndicator.style.display = 'block';
+            
+            setTimeout(() => {
+                player.ammo = player.maxAmmo;
+                player.isReloading = false;
+                reloadIndicator.style.display = 'none';
+                updateUI();
+            }, 2000);
+        }
+
+        // --- Оновлення UI ---
+        function updateUI() {
+            document.getElementById('health').textContent = player.health;
+            document.getElementById('score').textContent = player.score;
+            document.getElementById('ammo').textContent = player.ammo;
+            document.getElementById('level-display').textContent = player.level + '/3';
+            
+            let levelName = '';
+            switch(player.level) {
+                case 1: levelName = 'МІСЬКА ЗАБУДОВА'; break;
+                case 2: levelName = 'ЛІСОВИЙ МАСИВ'; break;
+                case 3: levelName = 'ГІРСЬКА МІСЦЕВІСТЬ'; break;
+            }
+            document.getElementById('level-name').textContent = levelName;
+        }
+
+        // --- Пошкодження гравця ---
+        function damagePlayer(amount) {
+            player.health = Math.max(0, player.health - amount);
+            updateUI();
+            
+            // Візуальний ефект
+            damageOverlay.style.background = 'rgba(255,0,0,0.3)';
+            setTimeout(() => {
+                damageOverlay.style.background = 'rgba(255,0,0,0)';
+            }, 200);
+            
+            if (navigator.vibrate) navigator.vibrate(100);
+            
+            if (player.health <= 0) {
+                gameOver();
+            }
+        }
+
+        // --- Game Over ---
+        function gameOver() {
+            alert('Гра закінчена! Ваш рахунок: ' + player.score);
+            player.health = player.maxHealth;
+            player.score = 0;
+            player.ammo = player.maxAmmo;
+            player.level = 1;
+            clearLevel();
+            createCityLevel();
+            updateUI();
+        }
+
+        // --- Створення рівнів (скорочено для мобільної версії) ---
+        function clearLevel() {
+            const toRemove = [];
+            scene.traverse(obj => {
+                if (obj !== camera && 
+                    obj !== sunLight && 
+                    obj !== ambientLight && 
+                    obj !== fillLight &&
+                    !(obj instanceof THREE.AmbientLight) &&
+                    !(obj instanceof THREE.DirectionalLight) &&
+                    !(obj instanceof THREE.PointLight)) {
+                    toRemove.push(obj);
+                }
+            });
+            toRemove.forEach(obj => scene.remove(obj));
+            
+            enemies.length = 0;
+            bullets.length = 0;
+            enemyBullets.length = 0;
+        }
+
+        function createGround(color, yOffset = 0) {
+            const geometry = new THREE.CircleGeometry(100, 64);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const ground = new THREE.Mesh(geometry, material);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = yOffset;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            return ground;
+        }
+
+        // --- Рівень 1: Місто з покращеними ворогами ---
+        function createCityLevel() {
+            createGround(0x555555);
+            
+            // Будівлі
+            for (let i = 0; i < 15; i++) {
+                const geometry = new THREE.BoxGeometry(2 + Math.random()*3, 3 + Math.random()*8, 2 + Math.random()*3);
+                const material = new THREE.MeshStandardMaterial({ color: 0x888888 });
+                const building = new THREE.Mesh(geometry, material);
+                building.position.set((Math.random() - 0.5) * 60, geometry.parameters.height/2, (Math.random() - 0.5) * 60);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                scene.add(building);
+            }
+            
+            // Покращені вороги
+            for (let i = 0; i < 5; i++) {
+                createEnemy('city', i);
+            }
+        }
+
+        // --- Створення ворога з різною поведінкою ---
+        function createEnemy(type, index) {
+            let geometry, material, scale = 1;
+            let health = 3;
+            let color = 0xff3333;
+            let canShoot = true;
+            let canReflect = false;
+            
+            if (type === 'city') {
+                geometry = new THREE.BoxGeometry(1.2, 2, 1.2);
+                color = 0xff4444;
+                if (index % 3 === 0) canReflect = true; // Кожен третій відбиває кулі
+            } else if (type === 'jungle') {
+                geometry = new THREE.SphereGeometry(1, 8);
+                color = 0x44ff44;
+                canShoot = true;
+            } else {
+                geometry = new THREE.ConeGeometry(1, 2, 6);
+                color = 0xaaaaaa;
+                health = 4;
+                canReflect = true;
+            }
+            
+            const material2 = new THREE.MeshStandardMaterial({ color: color, emissive: 0x220000 });
+            const enemy = new THREE.Mesh(geometry, material2);
+            
+            enemy.position.set((Math.random() - 0.5) * 50, 1, (Math.random() - 0.5) * 50);
+            enemy.castShadow = true;
+            enemy.receiveShadow = true;
+            scene.add(enemy);
+            
+            // Додаємо "щит" для ворогів, що відбивають
+            let shield = null;
+            if (canReflect) {
+                const shieldGeo = new THREE.SphereGeometry(1.5, 6);
+                const shieldMat = new THREE.MeshBasicMaterial({ 
+                    color: 0x00ffff, 
+                    transparent: true, 
+                    opacity: 0.2,
+                    wireframe: true 
+                });
+                shield = new THREE.Mesh(shieldGeo, shieldMat);
+                enemy.add(shield);
+            }
+            
+            enemies.push({
+                mesh: enemy,
+                shield: shield,
+                speed: 0.02 + Math.random() * 0.03,
+                direction: new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(),
+                health: health,
+                maxHealth: health,
+                shootCooldown: 0,
+                canShoot: canShoot,
+                canReflect: canReflect,
+                type: type,
+                lastShot: 0
+            });
+        }
+
+        // --- Рівень 2: Джунглі ---
+        function createJungleLevel() {
+            createGround(0x2e8b57);
+            
+            // Дерева
+            for (let i = 0; i < 30; i++) {
+                const treeGroup = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
+                trunk.position.y = 1.5;
+                trunk.castShadow = true;
+                trunk.receiveShadow = true;
+                treeGroup.add(trunk);
+                
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 6), new THREE.MeshStandardMaterial({ color: 0x228b22 }));
+                leaves.position.y = 3;
+                leaves.castShadow = true;
+                leaves.receiveShadow = true;
+                treeGroup.add(leaves);
+                
+                treeGroup.position.set((Math.random() - 0.5) * 70, 0, (Math.random() - 0.5) * 70);
+                scene.add(treeGroup);
+            }
+            
+            // Вороги
+            for (let i = 0; i < 6; i++) {
+                createEnemy('jungle', i);
+            }
+        }
+
+        // --- Рівень 3: Гори ---
+        function createMountainsLevel() {
+            createGround(0x8B5A2B);
+            
+            // Гори
+            for (let i = 0; i < 10; i++) {
+                const mountain = new THREE.Mesh(new THREE.ConeGeometry(2 + Math.random()*4, 5 + Math.random()*8, 6), 
+                    new THREE.MeshStandardMaterial({ color: 0x696969 }));
+                mountain.position.set((Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60);
+                mountain.castShadow = true;
+                mountain.receiveShadow = true;
+                scene.add(mountain);
+            }
+            
+            // Вороги
+            for (let i = 0; i < 5; i++) {
+                createEnemy('mountain', i);
+            }
+        }
+
+        // --- Ініціалізація ---
+        createCityLevel();
+
+        // --- Модальне вікно ---
+        let currentTaskId = 0;
+        let activeTrigger = null;
+
+        window.closeModal = function() {
+            document.getElementById('task-modal').style.display = 'none';
+        };
+
+        window.checkAnswer = function() {
+            const answer = document.getElementById('modal-answer').value.trim();
+            const resultEl = document.getElementById('modal-result');
+            
+            let correct = false;
+            const tasks = ['4', '5', '6', '8', '12', '7', '10'];
+            correct = (answer === tasks[currentTaskId]);
+            
+            if (correct) {
+                resultEl.style.color = '#00ff00';
+                resultEl.textContent = 'Правильно! +10 балів';
+                player.score += 10;
+                updateUI();
+                
+                if (activeTrigger) {
+                    scene.remove(activeTrigger);
+                    activeTrigger = null;
+                }
+                
+                setTimeout(closeModal, 1000);
+            } else {
+                resultEl.style.color = '#ff0000';
+                resultEl.textContent = 'Неправильно!';
+            }
+        };
+
+        function checkInteraction() {
+            // Пошук тригерів поруч
+            const triggers = [];
+            scene.traverse(obj => {
+                if (obj.userData && obj.userData.type === 'task') {
+                    const distance = obj.position.distanceTo(camera.position);
+                    if (distance < 5) triggers.push(obj);
+                }
+            });
+            
+            if (triggers.length > 0) {
+                activeTrigger = triggers[0];
+                currentTaskId = activeTrigger.userData.taskId;
+                
+                document.getElementById('task-modal').style.display = 'block';
+                document.getElementById('modal-answer').value = '';
+                document.getElementById('modal-result').textContent = '';
+            }
+        }
+
+        // --- Додаємо тригери на рівень ---
+        function addTriggers() {
+            const triggerMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.3 });
+            for (let i = 0; i < 3; i++) {
+                const triggerGeo = new THREE.BoxGeometry(2, 2, 2);
+                const trigger = new THREE.Mesh(triggerGeo, triggerMat);
+                trigger.position.set(10 + i*15, 1, 15 + i*5);
+                scene.add(trigger);
+                trigger.userData = { type: 'task', taskId: i };
+            }
+        }
+        
+        // Викликаємо після створення рівня
+        setTimeout(addTriggers, 100);
+
+        // --- Перевірка відбивання куль ---
+        function checkReflection(bullet, enemy) {
+            if (!enemy.canReflect) return false;
+            
+            // 30% шанс на відбиття
+            if (Math.random() > 0.3) return false;
+            
+            // Відбиваємо кулю назад у гравця
+            const reflectDir = bullet.direction.clone().negate();
+            const newBullet = {
+                mesh: bullet.mesh.clone(),
+                direction: reflectDir,
+                speed: bullet.speed * 0.8,
+                distance: 0,
+                isEnemy: true
+            };
+            
+            newBullet.mesh.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            newBullet.mesh.scale.set(0.8, 0.8, 0.8);
+            scene.add(newBullet.mesh);
+            enemyBullets.push(newBullet);
+            
+            // Видаляємо оригінальну кулю
+            scene.remove(bullet.mesh);
+            
+            return true;
+        }
+
+        // --- Анімація ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Рух гравця (від джойстика)
+            if (moveDirection.length() > 0.1) {
+                const speed = 0.15;
+                const move = new THREE.Vector3(moveDirection.x, 0, moveDirection.z);
+                move.applyQuaternion(camera.quaternion);
+                move.y = 0;
+                move.normalize();
+                
+                camera.position.add(move.multiplyScalar(speed));
+            }
+
+            // Оновлення куль гравця
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.mesh.position.add(bullet.direction.clone().multiplyScalar(bullet.speed));
+                bullet.distance += bullet.speed;
+                
+                // Перевірка зіткнення з ворогами
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const dist = bullet.mesh.position.distanceTo(enemy.mesh.position);
+                    
+                    if (dist < 1.5) {
+                        // Перевірка на відбиття
+                        if (checkReflection(bullet, enemy)) {
+                            bullets.splice(i, 1);
+                            break;
+                        }
+                        
+                        // Пошкодження ворога
+                        enemy.health--;
+                        scene.remove(bullet.mesh);
+                        bullets.splice(i, 1);
+                        
+                        if (enemy.health <= 0) {
+                            scene.remove(enemy.mesh);
+                            enemies.splice(j, 1);
+                            player.score += 20;
+                            updateUI();
+                        }
+                        
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        break;
+                    }
+                }
+                
+                // Видалення далеких куль
+                if (bullet.distance > 50) {
+                    scene.remove(bullet.mesh);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Стрільба ворогів
+            enemies.forEach(enemy => {
+                if (!enemy.canShoot) return;
+                
+                // Випадкова стрільба (5% шанс кожен кадр)
+                if (Math.random() < 0.02 && player.health > 0) {
+                    const dir = new THREE.Vector3().subVectors(camera.position, enemy.mesh.position).normalize();
+                    
+                    const bulletGeo = new THREE.SphereGeometry(0.25);
+                    const bulletMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x440000 });
+                    const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+                    
+                    bullet.position.copy(enemy.mesh.position);
+                    bullet.position.y += 1;
+                    scene.add(bullet);
+                    
+                    enemyBullets.push({
+                        mesh: bullet,
+                        direction: dir,
+                        speed: 0.4,
+                        distance: 0
+                    });
+                }
+                
+                // Рух ворога
+                enemy.mesh.position.add(enemy.direction.clone().multiplyScalar(enemy.speed));
+                
+                // Відбивання від меж
+                if (Math.abs(enemy.mesh.position.x) > 45) enemy.direction.x *= -1;
+                if (Math.abs(enemy.mesh.position.z) > 45) enemy.direction.z *= -1;
+            });
+
+            // Оновлення куль ворогів
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = enemyBullets[i];
+                bullet.mesh.position.add(bullet.direction.clone().multiplyScalar(bullet.speed));
+                bullet.distance += bullet.speed;
+                
+                // Перевірка попадання в гравця
+                if (bullet.mesh.position.distanceTo(camera.position) < 1) {
+                    damagePlayer(15);
+                    scene.remove(bullet.mesh);
+                    enemyBullets.splice(i, 1);
+                    continue;
+                }
+                
+                if (bullet.distance > 50) {
+                    scene.remove(bullet.mesh);
+                    enemyBullets.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Адаптація до зміни розміру
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        updateUI();
+        addTriggers();
+
+        // Додаємо зірки для атмосфери
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 300;
+        const starsPos = new Float32Array(starsCount * 3);
+        for (let i = 0; i < starsCount * 3; i += 3) {
+            starsPos[i] = (Math.random() - 0.5) * 200;
+            starsPos[i+1] = (Math.random() - 0.5) * 200;
+            starsPos[i+2] = (Math.random() - 0.5) * 200;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+        const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 });
+        const stars = new THREE.Points(starsGeo, starsMat);
+        scene.add(stars);
+
+        console.log('Мобільна версія гри запущена! Використовуйте сенсорне управління.');
+    </script>
+</body>
+</html>
